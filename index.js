@@ -13,9 +13,6 @@ app.use(
   })
 );
 
-app.get("/", (req, res) => {
-  res.send("Hey, How are you");
-});
 
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
@@ -23,11 +20,9 @@ app.post("/login", async (req, res) => {
     const user = await User.findOne({ username, password });
     if (user) {
       res.json({ message: "Logedin Successfully", user });
-      console.log(user);
     } else {
       const user = new User({ username, password });
       await user.save();
-      console.log(user);
       res.json({ message: "Logedin Successfully", user });
     }
   } catch (error) {
@@ -38,7 +33,8 @@ app.post("/login", async (req, res) => {
 app.get("/setting/:userId", async (req, res) => {
   const { userId } = req.params;
   try {
-    const config = await themeModel.findOne({ userId });
+    const config = await themeModel.findOne({ userID:userId });
+    console.log(config)
     if (config) {
       res.json(config);
     } else {
@@ -58,7 +54,6 @@ app.get("/setting/:userId", async (req, res) => {
 
 app.put("/setting/:userId", async (req, res) => {
   const { userId } = req.params;
-  console.log(userId);
   try {
     const {
       backgroundColor,
@@ -76,6 +71,7 @@ app.put("/setting/:userId", async (req, res) => {
       );
       res.json(updateTheme);
     } else {
+      console.log("Ratikanta2")
       const newTheme = new themeModel({
         userID: userId,
         backgroundColor,
