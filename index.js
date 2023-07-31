@@ -5,6 +5,7 @@ const themeModel = require("./model/themeModel");
 const User = require("./model/userModel");
 const app = express();
 const http = require("http").createServer(app);
+const io = require("socket.io")(http);
 
 app.use(express.json());
 app.use(
@@ -12,7 +13,6 @@ app.use(
     origin: "*",
   })
 );
-
 
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
@@ -33,8 +33,7 @@ app.post("/login", async (req, res) => {
 app.get("/setting/:userId", async (req, res) => {
   const { userId } = req.params;
   try {
-    const config = await themeModel.findOne({ userID:userId });
-    console.log(config)
+    const config = await themeModel.findOne({ userID: userId });
     if (config) {
       res.json(config);
     } else {
@@ -71,7 +70,6 @@ app.put("/setting/:userId", async (req, res) => {
       );
       res.json(updateTheme);
     } else {
-      console.log("Ratikanta2")
       const newTheme = new themeModel({
         userID: userId,
         backgroundColor,
@@ -87,6 +85,24 @@ app.put("/setting/:userId", async (req, res) => {
     console.log(error);
     res.status(500).json({ message: "Error updating color configuration" });
   }
+});
+
+io.on("connection", (socket) => {
+  socket.on("updateThemeConfig", async (data) => {
+    const { userId, updatedConfig } = data;
+    try {
+      await themeModel.findOneAndUpdate({ userID: userId }, updatedConfig, {
+        new: true,
+        upsert: true,
+      });
+      socket.to(userId).emit("themeConfigUpdate", updatedConfig);
+    } catch (error) {
+      console.log(error);
+    }
+  });
+  socket.on("disconnect", () => {
+    console.log("A user disconnected");
+  });
 });
 
 http.listen(process.env.port || 8080, async () => {
