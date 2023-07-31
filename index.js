@@ -61,14 +61,22 @@ app.put("/setting/:userId", async (req, res) => {
       textColor,
       fontSize,
     } = req.body;
+
     const config = await themeModel.findOne({ userID: userId });
     if (config) {
-      const updateTheme = await themeModel.findOneAndUpdate(
+      const updatedTheme = await themeModel.findOneAndUpdate(
         { userID: userId },
-        { backgroundColor, primaryColor, secondaryColor, textColor, fontSize },
+        {
+          backgroundColor,
+          primaryColor,
+          secondaryColor,
+          textColor,
+          fontSize,
+        },
         { new: true, upsert: true }
       );
-      res.json(updateTheme);
+      io.to(userId).emit("themeConfigUpdate", updatedTheme);
+      res.json(updatedTheme);
     } else {
       const newTheme = new themeModel({
         userID: userId,
@@ -79,6 +87,7 @@ app.put("/setting/:userId", async (req, res) => {
         fontSize,
       });
       await newTheme.save();
+      io.to(userId).emit("themeConfigUpdate", newTheme);
       res.json(newTheme);
     }
   } catch (error) {
