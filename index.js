@@ -5,7 +5,15 @@ const themeModel = require("./model/themeModel");
 const User = require("./model/userModel");
 const app = express();
 const http = require("http").createServer(app);
-const io = require("socket.io")(http);
+
+const io = require("socket.io")(http,{
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST", "PUT"],
+    allowedHeaders: ["my-custom-header"],
+    credentials: true
+  }
+});
 
 app.use(express.json());
 app.use(
@@ -13,6 +21,10 @@ app.use(
     origin: "*",
   })
 );
+
+app.get("/",(req,res)=>{
+  res.send("Ratikanta")
+})
 
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
@@ -22,6 +34,7 @@ app.post("/login", async (req, res) => {
       res.json({ message: "Logedin Successfully", user });
     } else {
       const user = new User({ username, password });
+      console.log(user)
       await user.save();
       res.json({ message: "Logedin Successfully", user });
     }
@@ -61,7 +74,6 @@ app.put("/setting/:userId", async (req, res) => {
       textColor,
       fontSize,
     } = req.body;
-
     const config = await themeModel.findOne({ userID: userId });
     if (config) {
       const updatedTheme = await themeModel.findOneAndUpdate(
@@ -75,7 +87,7 @@ app.put("/setting/:userId", async (req, res) => {
         },
         { new: true, upsert: true }
       );
-      io.to(userId).emit("themeConfigUpdate", updatedTheme);
+      io.emit("themeConfigUpdate", updatedTheme);
       res.json(updatedTheme);
     } else {
       const newTheme = new themeModel({
@@ -97,14 +109,14 @@ app.put("/setting/:userId", async (req, res) => {
 });
 
 io.on("connection", (socket) => {
-  socket.on("updateThemeConfig", async (data) => {
-    const { userId, updatedConfig } = data;
+  socket.on("updateThemeConfig", async ({userId,data}) => {
+   const updatedConfig = data
     try {
       await themeModel.findOneAndUpdate({ userID: userId }, updatedConfig, {
         new: true,
         upsert: true,
       });
-      socket.to(userId).emit("themeConfigUpdate", updatedConfig);
+      socket.emit("themeConfigUpdate",{userId ,updatedConfig});
     } catch (error) {
       console.log(error);
     }
